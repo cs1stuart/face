@@ -1,0 +1,24 @@
+You are helping optimize a backend that feels slow (API responses take multiple seconds). The database is likely remote (e.g. cloud Postgres). Your goals:
+
+1. **Measure first**: Identify the slowest endpoints (logs with timing, APM, or simple middleware that logs duration per route). Don’t optimize blindly.
+
+2. **Reduce database round-trips** (biggest win on remote DB):
+   - Replace `findMany` + separate `count()` for pagination with **one query** (e.g. SQL window functions or a CTE that returns total + page rows).
+   - Replace deep ORM `include` / nested loads that trigger **N+1 or multiple queries** with **one JOIN query** (raw SQL or a single well-scoped query) where it’s safe.
+   - For “login / current user + roles + permissions” style payloads, load everything in **one JOIN** instead of many calls.
+
+3. **Smaller responses on list endpoints**:
+   - List views: **exclude** large text/BLOB/JSON columns; full detail only on GET-by-id.
+   - Return only fields the client actually needs.
+
+4. **Indexes**: Add indexes on columns used in `WHERE`, `JOIN`, `ORDER BY`, and foreign keys. Verify with `EXPLAIN ANALYZE` on slow queries.
+
+5. **Connection pooling**: Use a pooler (e.g. PgBouncer, or the host’s “transaction” pool mode) so each request doesn’t pay full connection setup to a distant DB.
+
+6. **Caching** (where data is read-heavy and can be stale briefly): Short TTL in-memory or Redis for reference data, permission sets, or “get all payers” style endpoints. Invalidate on writes.
+
+7. **CPU-heavy work**: Hashing (bcrypt rounds), crypto, large JSON parse — keep rounds reasonable; don’t block the event loop with huge synchronous work.
+
+8. **Deliverables**: For each slow route, document (a) queries before/after count, (b) what changed, (c) how to verify (curl or test). Prefer minimal, focused changes; don’t rewrite the whole app.
+
+Stack to assume: [YAHAN apna stack likho — e.g. Node + Express + Prisma + Supabase Postgres / Laravel / Django / etc.]
