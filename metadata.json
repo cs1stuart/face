@@ -1,0 +1,5 @@
+{
+  "name": "FaceAuth Pro",
+  "description": "A production-style Face Recognition & Auth System with React and Express.",
+  "requestFramePermissions": ["camera"]
+}
