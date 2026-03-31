@@ -1,0 +1,135 @@
+You are a senior backend performance engineer.
+
+I want you to optimize my backend API response times aggressively and safely.
+Goal: reduce p95 latency to under 1s where feasible, without changing API response contracts.
+
+Tech stack (fill this): [Node/Express | Prisma | Postgres/Supabase | etc.]
+
+========================
+PHASE 0 — RULES
+========================
+1) Do not break existing API response shape.
+2) Keep behavior same unless I approve changes.
+3) Prefer small targeted edits over full rewrites.
+4) Measure before and after each change.
+5) Explain each change in simple language.
+
+========================
+PHASE 1 — BASELINE & AUDIT
+========================
+1) Scan project and list slow endpoints candidates:
+   - login/me/profile
+   - paginated list endpoints
+   - role/permission checks
+   - endpoints with nested ORM include
+2) Find anti-patterns:
+   - findMany + separate count() for pagination
+   - repeated includes causing multi-query round-trips
+   - N+1 style loops
+   - heavy columns returned in list endpoints (large text/json/blob)
+   - repeated permission checks hitting DB each request
+3) Produce a table:
+   - endpoint
+   - current query count per request
+   - estimated bottleneck (DB/network/CPU/cache miss)
+
+========================
+PHASE 2 — FILES TO CREATE / UPDATE
+========================
+Create/update these helper files if missing:
+
+A) src/lib/prisma.ts
+- Single shared Prisma client instance.
+- Export prisma and disconnectPrisma().
+
+B) src/lib/numeric.ts
+- Utilities to safely convert bigint/number/null from raw SQL:
+  - toInt(value)
+  - toIntOrNull(value)
+
+C) src/lib/password.ts
+- Centralize password hashing/verification (bcrypt).
+- Read rounds from env (BCRYPT_ROUNDS).
+
+D) src/lib/dbWarmup.ts
+- Add warmPrismaQueryPath() that runs `SELECT 1` once.
+- Purpose: move first-query cold cost to startup.
+
+E) server.ts (or app bootstrap)
+- await prisma.$connect()
+- await warmPrismaQueryPath()
+- preload stable caches if needed
+- graceful shutdown:
+  - disconnectPrisma()
+  - close other db clients
+
+F) src/lib/cache.ts (if absent)
+- in-memory TTL cache with:
+  - get / set / getOrSet / deleteByPrefix
+- TTL constants:
+  - SHORT / MEDIUM / LONG / VERY_LONG
+
+========================
+PHASE 3 — CODE CHANGES TO APPLY
+========================
+1) Login/me optimization
+- Replace multi-call include chains with one JOIN query ($queryRaw).
+- Aggregate rows in code to same response structure.
+- Ensure bigint-safe mapping via numeric.ts.
+
+2) Pagination optimization
+- Replace findMany + count() with one SQL CTE/window query:
+  - filtered set
+  - total count
+  - page rows
+- Keep fallback count only if page empty.
+
+3) Permission middleware optimization
+- Replace nested role->permission include loads with one query:
+  SELECT DISTINCT permission name for user.
+- Cache user permissions with TTL.
+- Add invalidatePermissionCache(userId) and invalidateAllPermissionCaches().
+- Invalidate on role/permission write operations.
+
+4) Cache list endpoints
+- Add cache.getOrSet for read-heavy list APIs
+  (permissions/carrier groups/payers etc.)
+- Create deterministic cache key from filters/page/sort/perPage.
+- Invalidate cache on create/update/delete for that module.
+
+5) Reduce payload
+- For list endpoints, do NOT select huge columns.
+- Keep heavy fields for detail endpoint only.
+
+6) Replace heavy includes on write paths
+- create/update endpoints should avoid unnecessary include relations.
+- Return minimal object or call optimized getById only when needed.
+
+========================
+PHASE 4 — DB / INFRA CHECKS
+========================
+1) Ensure DB region is close to app region.
+2) Ensure pooled connection string (PgBouncer/transaction mode).
+3) Add/verify indexes used in WHERE/JOIN/ORDER BY.
+4) Use EXPLAIN ANALYZE for top slow queries and report findings.
+
+========================
+PHASE 5 — VALIDATION
+========================
+1) Run typecheck/lint/tests.
+2) Give before vs after comparison:
+   - endpoint
+   - query count before/after
+   - latency before/after (if measurable)
+3) List residual risks:
+   - first request cold start
+   - per-process memory cache limitation
+4) Suggest next step (Redis shared cache) if multi-instance setup exists.
+
+========================
+OUTPUT FORMAT I WANT
+========================
+1) “What changed” (file-by-file)
+2) “Why it improved performance”
+3) “How to verify quickly” (curl/postman steps)
+4) “Next improvements” (top 3)
