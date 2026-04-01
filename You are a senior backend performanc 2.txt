@@ -133,3 +133,9 @@ OUTPUT FORMAT I WANT
 2) “Why it improved performance”
 3) “How to verify quickly” (curl/postman steps)
 4) “Next improvements” (top 3)
+
+
+
+
+
+https://ai.studio/apps/a1b7f4ac-5153-40c3-afe3-8964a3c1a750?fullscreenApplet=true
