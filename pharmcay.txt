@@ -1,0 +1,217 @@
+🧠 PROJECT OVERVIEW
+
+I am building a multi-business, multi-branch pharmacy management system (SaaS-style ERP) using:
+
+React (Frontend)
+Node.js + Express (Backend)
+MongoDB (Database)
+React Query (Server state management)
+Redux Toolkit (Global client state)
+Axios (API calls)
+
+The system includes:
+
+Multi businesses (organizations)
+Each business has multiple branches
+Each branch has independent dashboard
+Inventory management (15+ CRUD modules)
+Sales, orders, customers, stock, reports
+Business + branch selector dropdown (global filter)
+🎯 CORE PROBLEM THIS ARCHITECTURE SOLVES
+Fast data loading across tabs
+Multi-business switching without lag
+Branch-based data isolation
+Scalable dashboard system
+Avoid unnecessary re-renders & API calls
+Smooth UX (instant feel like SaaS apps)
+🏗️ ARCHITECTURE DESIGN RULES
+🔴 RULE 1: STATE SEPARATION
+✅ Redux (Global UI State ONLY)
+
+Redux sirf ye cheeze store karega:
+
+selectedBusinessId
+selectedBranchId
+user authentication token
+user role/permissions (optional)
+
+❌ Redux me API data NEVER store karna
+
+✅ React Query (SERVER STATE ONLY)
+
+React Query will handle ALL API data:
+
+Inventory data
+Dashboard stats
+Sales data
+Orders
+Customers
+Reports
+Stock movements
+
+👉 Rule:
+
+“Everything that comes from backend = React Query”
+
+⚙️ FOLDER STRUCTURE (SCALABLE)
+src/
+ ├── features/
+ │   ├── business/
+ │   ├── branch/
+ │   ├── inventory/
+ │   ├── dashboard/
+ │   ├── orders/
+ │   ├── customers/
+ │
+ ├── store/
+ │   ├── store.js
+ │   ├── uiSlice.js
+ │
+ ├── services/
+ │   ├── api.js
+ │   ├── inventoryApi.js
+ │
+ ├── hooks/
+ │   ├── useInventory.js
+ │   ├── useDashboard.js
+ │   ├── useOrders.js
+ │
+ ├── components/
+ │   ├── Layout/
+ │   ├── Sidebar/
+ │   ├── Dropdowns/
+🔁 GLOBAL FLOW (VERY IMPORTANT)
+STEP 1: User selects Business + Branch
+
+From dropdown:
+
+dispatch(setBusinessId(id))
+dispatch(setBranchId(id))
+STEP 2: Redux updates global state
+selectedBusinessId = "b1"
+selectedBranchId = "br2"
+STEP 3: React Query auto triggers API
+useQuery({
+  queryKey: ['inventory', businessId, branchId],
+  queryFn: () => fetchInventory(businessId, branchId)
+})
+STEP 4: UI updates instantly
+Data re-renders automatically
+No full page reload
+Smooth SaaS experience
+⚡ PERFORMANCE OPTIMIZATION RULES
+🔥 1. CACHING (VERY IMPORTANT)
+staleTime: 5 * 60 * 1000 // 5 min cache
+
+👉 Benefit:
+
+Same data repeat fetch nahi hoga
+Tabs instantly open honge
+🔥 2. KEEP PREVIOUS DATA
+keepPreviousData: true
+
+👉 Benefit:
+
+Branch change pe UI blank nahi hoga
+Old data visible rahega while new loads
+🔥 3. QUERY KEYS DESIGN
+['inventory', businessId, branchId]
+['dashboard', businessId, branchId]
+['orders', businessId, branchId]
+
+👉 Benefit:
+
+Proper caching
+No data mix
+Accurate refetch
+🔥 4. PREFETCHING (PRO LEVEL UX)
+queryClient.prefetchQuery({
+  queryKey: ['inventory', branchId],
+  queryFn: fetchInventory
+})
+
+👉 Benefit:
+
+User click se pehle data ready
+Instant loading feel ⚡
+🔥 5. LAZY LOADING / PAGINATION
+1000 records ek sath mat lao
+Table pagination use karo
+Infinite scroll optional
+🧩 API DESIGN RULES
+
+Backend APIs should be:
+
+GET /inventory?businessId=1&branchId=2
+GET /dashboard?branchId=2
+POST /inventory
+PUT /inventory/:id
+DELETE /inventory/:id
+
+👉 Always filter by branchId + businessId
+
+🧠 UI STATE RULES
+
+Use Redux for:
+
+Selected Business
+Selected Branch
+Sidebar open/close (optional)
+Theme (optional future)
+📊 DASHBOARD BEHAVIOR
+
+When:
+
+Business changes:
+All branch reset
+All queries refetch
+Branch changes:
+All modules refresh:
+inventory
+dashboard
+orders
+
+👉 Controlled via React Query keys
+
+🚀 UX GOAL (IMPORTANT)
+
+The system should feel like:
+
+Instant tab switching ⚡
+No loading delay feel
+Smooth dashboard updates
+SaaS-level performance
+❌ COMMON MISTAKES TO AVOID
+
+🚫 Redux me API data store karna
+🚫 Over-fetching data
+🚫 Same API multiple places call karna
+🚫 No caching use karna
+🚫 Large data without pagination
+
+💡 FINAL ARCHITECTURE SUMMARY
+🟢 Redux handles:
+selectedBusinessId
+selectedBranchId
+auth state
+🔵 React Query handles:
+ALL backend data
+caching
+refetching
+syncing
+🟡 API layer handles:
+clean backend calls
+filtering by business & branch
+🧠 FINAL GOLDEN RULE
+
+“Redux is for controlling the app, React Query is for feeding the app.”
+
+💯 FINAL RESULT (AFTER THIS ARCHITECTURE)
+
+If implemented correctly:
+
+✔ Fast dashboard switching
+✔ Instant tab loading
+✔ Scalable ERP system
+✔ Clean codebase
+✔ Production-ready SaaS app
